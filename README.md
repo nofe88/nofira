@@ -1,58 +1,132 @@
 # NOFIRA — Small Signals Matter.
 
-An astronaut health and operational performance monitoring prototype, built for the **NASA Space Apps Challenge 2026**
+**Live website:** https://nofe88.github.io/nofira/  ·  **Repository:** https://github.com/nofe88/nofira
+
+NOFIRA is an astronaut health and operational performance monitoring prototype built for the **NASA Space Apps Challenge 2026**
 (challenge: *Create Health Monitoring Software for Astronauts on Space Missions*). Team Rolinf, Tabuk, Saudi Arabia.
 
-NOFIRA looks for **accumulating small operational deviations** (repeated errors, slower tasks, longer corrections) and
-places them alongside available health indicators. It is a **research and decision-support prototype, not a medical
-diagnostic system**. Correlation is not causation.
+> NOFIRA does not simply count mistakes. It identifies how small operational deviations accumulate over time.
 
-![Dashboard](docs/dashboard.png)
-![Explainable alert](docs/alert.png)
+**NOFIRA is an experimental decision-support research prototype. It is not a medical diagnostic system and does not replace flight surgeons or mission-control judgment.**
 
-## Run it
-Single static file, no build step and no server needed.
-- Open `index.html` in a browser, or
-- Publish with GitHub Pages: Settings → Pages → Branch `main` → `/ (root)`.
+![Demo](docs/demo.png)
 
-## Features
-Overview, astronaut profiles, health and performance views, analysis engine (configurable thresholds),
-explainable alerts, mission timeline, mission control and astronaut views, interactive simulation lab with three
-scenarios and before/after comparison, NASA Data Explorer (CSV/TSV upload), data sources page, CSV export,
-printable report.
+## The problem and the proposed solution
+On demanding missions, small operational deviations (a repeated step, a slower task, an extra correction) look harmless one by one.
+Seen together over time they can form a pattern worth a human look. NOFIRA compares each astronaut with their **own baseline**, detects accumulating
+deviations, and produces **explainable alerts** for human review. It never diagnoses.
 
-## Data provenance
+## Try it in one minute
+1. Open the live site and press **TRY NOFIRA DEMO**.
+2. Step through the four stages (or press Autoplay): normal operations → early deviations → accumulating deviations → explainable alert.
+3. Open **How was this score calculated?** to inspect every weight, z-score and contribution.
+4. Go to **Simulation Lab**, change sleep, errors, task or correction time and watch the index, charts, timeline and alert update.
+
+The demo is deterministic and labeled **SIMULATED DEMONSTRATION DATA — NOT REAL ASTRONAUT MEASUREMENTS.**
+
+## System architecture
+Single static page (`index.html`): plain HTML, CSS and JavaScript with SVG charts. No framework, no server, no paid API. Works on GitHub Pages.
+
+```
+Operational data → Personal baseline → Deviation detection → Accumulation patterns → Explainable alert → Human review
+ (simulated or      (days 1–14,        (z-scores, weights,    (repeated errors,       (index, reasons,       (flight surgeon /
+  user-imported)     configurable)       Index 0–100)           rising times, recovery)  contributions)         mission control)
+```
+Settings and imported files are kept in the browser's local storage only; nothing is sent anywhere.
+
+![How it works](docs/how-it-works.png)
+
+## Data classification
 | Class | Meaning |
 |---|---|
-| REAL NASA DATA | Only data you import yourself from OSD-569 / OSD-575 |
-| SYNTHETIC DEMO | Seeded simulated telemetry (sleep, heart rate, fatigue, stress, errors, task and correction time) |
-| DERIVED ANALYSIS | Values computed by NOFIRA's engine |
+| **REAL NASA DATA** | Only files you import yourself from OSD-569 / OSD-575 |
+| **SIMULATED DATA** | Seeded or scripted demonstration telemetry (sleep, heart rate, errors, task and correction time, procedural deviations) |
+| **DERIVED ANALYSIS** | Values computed by the NOFIRA engine (baselines, z-scores, index, patterns, alerts) |
+| **USER-IMPORTED** | Operational CSV/TSV you load on the Engine page |
 
-**This repository contains no NASA measurements.** To explore them, download a data file from
-[OSD-569](https://osdr.nasa.gov/bio/repo/data/studies/OSD-569) or
-[OSD-575](https://osdr.nasa.gov/bio/repo/data/studies/OSD-575) (Inspiration4), export to CSV/TSV if needed, and upload it
-on the *NASA Data* page. Values, units and sampling timepoints stay as in the original file; nothing is imputed.
-These samples are sparse biological timepoints from a short-duration mission, not continuous monitoring, and do not
-contain operational errors, task times or sleep records.
+Every chart, card and export is labeled. The categories are never mixed silently.
 
-## Engine upgrade (v2)
-- Operational event data with procedural deviations; selectable baseline period (needs ≥ 5 observations per indicator).
-- Missing values are excluded, never treated as zero; insufficient baselines are reported.
-- Pattern detection: isolated error, repeated minor errors, gradually increasing task/correction time, repeated procedural deviations, accumulation across indicators, recovery toward baseline.
-- Alert categories: Normal, Observation, Moderate deviation, High deviation (configurable thresholds and weights).
-- Import your own operational CSV/TSV on the Engine page (columns: astronaut_id, mission_day, task_time_min, errors, correction_min, procedural_deviations, optional sleep_h).
-- Seven built-in engine tests (Engine page → Run engine tests).
+## NASA datasets
+| Accession | Study | Link |
+|---|---|---|
+| OSD-569 | SpaceX Inspiration4 Whole Blood Measurements | https://osdr.nasa.gov/bio/repo/data/studies/OSD-569 |
+| OSD-575 | SpaceX Inspiration4 Blood Serum Metabolic Panel and Immune/Cardiac Cytokine Arrays | https://osdr.nasa.gov/bio/repo/data/studies/OSD-575 |
+
+**This repository contains no NASA measurements.**
+
+### How to import NASA data
+1. Open the study page above and download a data file.
+2. If it is Excel, export it to CSV or TSV.
+3. Open **NASA Data**, pick OSD-569 or OSD-575, and upload the file.
+4. NOFIRA reads the columns, detects numeric variables, units written in headers (e.g. `(g/dL)`), missing values, invalid numeric entries and time-like columns. Nothing is assumed in advance.
+5. Choose a variable, a timepoint/group column and a filter value; chart the original values; export filtered CSV.
+
+Invalid files (empty, header only, unreadable) show a clear error. Sparse biological samples are never interpolated or presented as continuous monitoring.
+
+![NASA Data Explorer](docs/nasa-explorer.png)
 
 ## Operational Deviation Index (0–100)
-1. Baseline: mean and SD of mission days 1–14 per metric (SD floor: 5% of the mean and a fixed minimum per indicator); baseline days are configurable.
-2. Current value: mean of the last 3 days.
-3. `z = direction × (current − baseline mean) / SD` (direction −1 for sleep).
-4. `points = weight × clamp(z / 3, 0, 1)`.
-5. Index = sum of points. Default levels: Observation ≥ 20, Moderate ≥ 40, High ≥ 65 (configurable).
+1. **Baseline:** mean and SD of a selectable period (default mission days 1–14) per indicator. Fewer than 5 observations → indicator excluded.
+2. **Current value:** mean of the last 3 days with data.
+3. **z = direction × (current − baseline mean) ÷ SD** (direction −1 for sleep). SD has a floor (5% of the mean and a fixed minimum per indicator), so zero baselines never divide by zero.
+4. **Normalization:** `n = clamp(z ÷ 3, 0, 1)`.
+5. **Index = 100 × Σ(wᵢ × nᵢ) ÷ Σwᵢ**, summed over indicators that are available. Missing values are excluded, never treated as zero.
 
-Default weights: errors 20, task time 20, correction time 15, procedural deviations 15, sleep 10, fatigue 10, heart rate 5, stress 5 (configurable). Index = 100 × Σ weighted points ÷ Σ weights of available indicators.
-No random scores; every value is derived from the displayed inputs.
+| Component | Default weight |
+|---|---|
+| Operational errors per day | 20 |
+| Task completion time | 20 |
+| Error correction time | 15 |
+| Procedural deviations | 15 |
+| Sleep duration (optional) | 10 |
+| Fatigue indicator (optional) | 10 |
+| Heart rate (optional) | 5 |
+| Stress indicator (optional) | 5 |
 
-## Limitations
-Thresholds and weights are illustrative and not clinically validated. Simulated data only, except what you import.
-Uses plain HTML/JavaScript and SVG (no React, FastAPI or database). Browser storage keeps imported files locally.
+Categories (configurable): **Normal** < 20 · **Observation** ≥ 20 · **Moderate deviation** ≥ 40 · **High deviation** ≥ 65.
+Weights, thresholds and the baseline period are editable on the Engine page. The index is an experimental operational indicator,
+not a medical risk score or probability of injury, and has not been clinically validated.
+
+![Dashboard with score breakdown](docs/dashboard.png)
+
+**Patterns detected:** isolated error · repeated minor errors (≥ 2 of 3 days) · gradually increasing task time · increasing correction time · repeated procedural deviations · accumulation across ≥ 3 indicators · recovery toward baseline.
+
+## Import your own operational data
+Engine page → *Import operational event data*. CSV/TSV columns: `astronaut_id, mission_day (1–30), task_time_min, errors, correction_min, procedural_deviations`, optional `sleep_h`. Several tasks per day are aggregated (time = mean, counts = sum). Missing values stay missing.
+
+## Tests (executed)
+12 engine tests run in the browser (Engine page → *Run engine tests*) and in Node. Results of the last run: **12 passed, 0 failed.**
+
+| # | Test | Result |
+|---|---|---|
+| 1 | Stable operational baseline | PASS |
+| 2 | One isolated error | PASS |
+| 3 | Repeated minor errors | PASS |
+| 4 | Gradually increasing task duration | PASS |
+| 5 | Increasing correction duration | PASS |
+| 6 | Recovery toward baseline | PASS |
+| 7 | Missing observations | PASS |
+| 8 | Insufficient baseline data | PASS |
+| 9 | Zero baseline values | PASS |
+| 10 | Invalid imported data | PASS |
+| 11 | Determinism (identical inputs → identical results) | PASS |
+| 12 | Changing input changes the index | PASS |
+
+Also checked in a headless browser: 18 pages open without script errors; CSV and TSV import, empty and header-only file errors, filtered export, operational import (with skipped-row report), persistence and reset; no horizontal overflow at 390 px width.
+
+![Engine tests](docs/engine-tests.png)
+
+## Scientific methodology & limitations
+1. The selected NASA datasets come from the Inspiration4 mission, a short-duration mission.
+2. Their biological measurements exist at specific sampling timepoints.
+3. They are not continuous real-time sensor streams.
+4. Operational records used in the demonstration are simulated.
+5. Biological and operational datasets are not assumed to share timepoints.
+6. Correlation does not establish causation.
+7. The deviation index is an experimental operational indicator, not a clinically validated medical score.
+8. NOFIRA is a decision-support research prototype, not a medical diagnostic system.
+
+Other limits: weights and thresholds are illustrative; imported data stays in the browser only; the 1–30 mission-day window is fixed.
+
+## Run locally
+Open `index.html` in a browser. To publish: Settings → Pages → Branch `main` → `/ (root)`.
