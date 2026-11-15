@@ -35,14 +35,22 @@ on the *NASA Data* page. Values, units and sampling timepoints stay as in the or
 These samples are sparse biological timepoints from a short-duration mission, not continuous monitoring, and do not
 contain operational errors, task times or sleep records.
 
+## Engine upgrade (v2)
+- Operational event data with procedural deviations; selectable baseline period (needs ≥ 5 observations per indicator).
+- Missing values are excluded, never treated as zero; insufficient baselines are reported.
+- Pattern detection: isolated error, repeated minor errors, gradually increasing task/correction time, repeated procedural deviations, accumulation across indicators, recovery toward baseline.
+- Alert categories: Normal, Observation, Moderate deviation, High deviation (configurable thresholds and weights).
+- Import your own operational CSV/TSV on the Engine page (columns: astronaut_id, mission_day, task_time_min, errors, correction_min, procedural_deviations, optional sleep_h).
+- Seven built-in engine tests (Engine page → Run engine tests).
+
 ## Operational Deviation Index (0–100)
-1. Baseline: mean and SD of mission days 1–14 per metric (SD floor 5% of the mean).
+1. Baseline: mean and SD of mission days 1–14 per metric (SD floor: 5% of the mean and a fixed minimum per indicator); baseline days are configurable.
 2. Current value: mean of the last 3 days.
 3. `z = direction × (current − baseline mean) / SD` (direction −1 for sleep).
 4. `points = weight × clamp(z / 3, 0, 1)`.
-5. Index = sum of points. Default levels: Low ≥ 20, Moderate ≥ 40, High ≥ 65 (configurable).
+5. Index = sum of points. Default levels: Observation ≥ 20, Moderate ≥ 40, High ≥ 65 (configurable).
 
-Weights: errors 25, task time 20, correction time 15, sleep 15, heart rate 10, fatigue 10, stress 5.
+Default weights: errors 20, task time 20, correction time 15, procedural deviations 15, sleep 10, fatigue 10, heart rate 5, stress 5 (configurable). Index = 100 × Σ weighted points ÷ Σ weights of available indicators.
 No random scores; every value is derived from the displayed inputs.
 
 ## Limitations
